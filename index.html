@@ -105,23 +105,30 @@
   #panelDash, #panelNotes{display:block !important}
 
 
-/* === Two Save buttons: black, high-contrast === */
-#btnSaveTop, #btnSave {
-  background: linear-gradient(180deg,#111,#000) !important;
-  color:#fff !important;
-  border: 1px solid #000 !important;
+/* ===== R7: mobile responsive pass (pure CSS) ===== */
+@media (max-width: 480px){
+  :root { --body:15px; }
+  body { -webkit-text-size-adjust:100%; }
+  .wrap { padding: 0 12px; max-width: 100% !important; }
+  .row { display: grid !important; grid-template-columns: 1fr !important; gap: 12px !important; }
+  .card { border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+  .controls { grid-template-columns: 1fr !important; gap: 10px !important; }
+  .q { padding: 12px; border-radius: 12px; }
+  .q h3 { font-size: 15px; }
+  .pill button { padding: 14px 18px; min-height: 44px; font-size: 16px; }
+  .pill button.on { box-shadow: 0 2px 8px rgba(16,185,129,.18) inset, 0 3px 10px rgba(0,0,0,.06); }
+  .viz { display: grid !important; grid-template-columns: 1fr !important; gap: 12px !important; }
+  .quoteHero .line { font-size: 26px; line-height: 1.15; }
+  .ring { width: 160px !important; height: 160px !important; margin: 0 auto; }
+  .ring .score { font-size: 30px !important; }
+  .pair { gap: 10px; }
+  .kpi { font-size: 13px; padding: 6px 8px; }
+  #calendarWrap { display: flex !important; gap: 12px !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .calcell { height: 40px !important; font-size: 13px !important; border-radius: 8px !important; }
+  .tile { border-radius: 12px; padding: 12px; min-height: auto; background: linear-gradient(180deg,#fff,#fafafa); }
+  .notesBox { min-height: 180px; }
+  #btnSetAutosave { display: none !important; }
 }
-#btnSaveTop:hover, #btnSave:hover { filter: brightness(1.08); }
-/* Hide any other Save UI (e.g., sticky mobile Save bar) */
-#saveBar { display: none !important; }
-
-
-/* Confetti overlay + ring pulse */
-#confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:9999}
-.confetti{position:absolute;width:8px;height:12px;opacity:.95;will-change:transform,opacity;border-radius:2px}
-@keyframes confFall{0%{transform:translate3d(var(--x),-20px,0) rotate(0deg)}100%{transform:translate3d(var(--x2),110vh,0) rotate(720deg);opacity:0}}
-@keyframes ringPulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
-.ring.pulse{animation:ringPulse .7s ease}
 
 </style>
 </head>
@@ -152,13 +159,13 @@
       <div class="sectionTitle">Safety (CGM)</div>
       <div class="controls" id="safety"></div>
       <div class="actions">
-        <button class="btn" id="btnSave">Save Today</button>
+        <button class="btn" id="btnSave">Save today</button>
         <button class="btn secondary" id="btnClear">Clear</button>
         <div class="mini" id="todayDate"></div>
       </div>
 
       <div class="tile calendar">
-        <h4>Calendar — Past Month & Current</h4>
+        <h4>Calendar — This & Next</h4>
         <div id="calendarWrap" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;width:100%">
           <div>
             <div id="calMonth1" class="tag"></div>
@@ -283,7 +290,7 @@ const QUESTIONS = [
   {id:"q9", label:"≥ 30 min activity/WT", weight:6, show:true},
   {id:"q10", label:"Looked great today?", weight:6, show:true},
   {id:"q11", label:"No foam in urine", weight:6, show:true},
-  {id:"q12", label:"30 min health tweaking brainstorm?", weight:4, show:true},
+  {id:"q12", label:"Meditation/Red Light therapy", weight:4, show:true},
   {id:"q13", label:"Mindset/Affirmation/Reframing", weight:4, show:true},
   {id:"q14", label:"Decluttered space/computer", weight:3, show:true},
   {id:"q15", label:"Limited non-productive screen time", weight:3, show:true},
@@ -338,7 +345,7 @@ function compute(ans){let subtotal=0; QUESTIONS.forEach((q,i)=>{ if(ans['q_'+i]=
 
 // Safe visual updater (guards if updateViz isn't defined)
 function safeUpdateViz(){
-  if (typeof updateViz === 'function') { updateViz(); return; }
+  if (typeof updateViz === 'function') { safeUpdateViz(); return; }
   // Fallback: rebuild visuals from saved state for the selected day
   try{
     const k = (typeof selectedISO==='function') ? selectedISO() : (new Date().toISOString().slice(0,10));
@@ -419,7 +426,7 @@ function buildMonth(targetMonthOffset, monthLabelId, gridId){
     cont.append(cell);
   }
 }
-function buildCalendars(){ buildMonth(-1,'calMonth1','calendar1'); buildMonth(0,'calMonth2','calendar2'); }
+function buildCalendars(){ buildMonth(0,'calMonth1','calendar1'); buildMonth(1,'calMonth2','calendar2'); }
 
 function lastNDays(n){ const arr=[]; const d=new Date(); d.setHours(0,0,0,0); for(let i=n-1;i>=0;i--){ const t=new Date(d); t.setDate(t.getDate()-i); arr.push(t); } return arr; }
 function buildMiniHeatmap(){
@@ -606,37 +613,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 </script>
-<div id="confetti"></div>
-
-<script>
-(function(){
-  window.fireConfetti = function(){
-    try{
-      const cont = document.getElementById('confetti'); if(!cont) return;
-      const colors = ['#10b981','#34d399','#60a5fa','#93c5fd','#a7f3d0','#f59e0b','#ef4444','#8b5cf6'];
-      const N = 120, w = window.innerWidth;
-      for(let i=0;i<N;i++){
-        const d = document.createElement('div'); d.className='confetti';
-        const x = Math.random()*w, drift = x + (Math.random()*120 - 60);
-        d.style.setProperty('--x', x+'px'); d.style.setProperty('--x2', drift+'px');
-        d.style.left = x+'px'; d.style.top = '-12px';
-        d.style.background = colors[(Math.random()*colors.length)|0];
-        d.style.animation = `confFall ${0.9 + Math.random()*0.9}s ease-out forwards`;
-        cont.appendChild(d); setTimeout(()=>{d.remove();},1800);
-      }
-      const ring = document.querySelector('.ring'); if(ring){ ring.classList.remove('pulse'); void ring.offsetWidth; ring.classList.add('pulse'); }
-    }catch(e){}
-  };
-  // Wrap saveDay to guarantee feedback
-  const orig = window.saveDay;
-  window.saveDay = function(){
-    try{ if (typeof orig === 'function') orig(); } finally { try{ window.fireConfetti(); }catch(_){ } }
-  };
-  // Patch button handlers directly as fallback
-  const t = document.getElementById('btnSaveTop'); if (t) t.addEventListener('click', ()=>fireConfetti(), {passive:true});
-  const b = document.getElementById('btnSave'); if (b) b.addEventListener('click', ()=>fireConfetti(), {passive:true});
-})();
-</script>
-
 </body>
 </html>

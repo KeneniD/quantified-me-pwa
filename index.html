@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="manifest" href="manifest.json">
-
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quantified Me (v11R15R3)</title>
@@ -107,39 +105,23 @@
   #panelDash, #panelNotes{display:block !important}
 
 
-/* ===== Mobile layout pass ===== */
-.mobile :root { --body:15px; }
-.mobile body { -webkit-text-size-adjust:100%; }
-.mobile .wrap { padding: 0 12px; }
-.mobile .row { display: grid; grid-template-columns: 1fr; gap: 12px; }
-.mobile .card { border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.06); }
-.mobile .controls { grid-template-columns: 1fr !important; gap: 10px; }
-.mobile .q { padding: 12px; border-radius: 12px; }
-.mobile .q h3 { font-size: 15px; }
-.mobile .pill button { padding: 14px 18px; min-height: 44px; font-size: 16px; }
-.mobile .pill button.on { box-shadow: 0 2px 8px rgba(16,185,129,.18) inset, 0 3px 10px rgba(0,0,0,.06); }
-.mobile .viz { display: grid; grid-template-areas: "quote" "ring" "gains" "left" "streak" "focus" "misses" "momentum"; grid-template-columns: 1fr; gap: 12px; }
-.mobile .quoteHero .line { font-size: 26px; line-height: 1.15; }
-.mobile .ring { width: 160px; height: 160px; }
-.mobile .ring .score { font-size: 30px; }
-.mobile .pair { gap: 10px; }
-.mobile .kpi { font-size: 13px; padding: 6px 8px; }
-.mobile .segbar { height: 12px; }
-.mobile .grid .bar { height: 64px; }
-.mobile #calendarWrap { display: flex !important; gap: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.mobile .calcell { height: 40px; font-size: 13px; border-radius: 8px; }
-.mobile .tile { border-radius: 12px; padding: 12px; min-height: auto; }
-.mobile #miniHeat .sq { width: 8px !important; height: 8px !important; }
-.mobile .notesBox { min-height: 180px; }
-.mobile .quoteHero { background: linear-gradient(135deg,#f7f7f8 0%, #eef1f4 100%); }
-.mobile .seg.yes { background: linear-gradient(90deg,#c8f4db,#c8d9ff); }
-.mobile #btnSetAutosave { display: none; }
-/* Sticky save bar */
-.mobile .mobileSaveBar { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: linear-gradient(180deg,#ffffff,#f7f7f7); box-shadow: 0 -6px 16px rgba(0,0,0,.06); z-index: 1000; }
-.mobile #saveBar button#sb-save { appearance: none; border: 1px solid var(--line); background: linear-gradient(180deg,#10b981,#059669); color:#fff; font-weight: 900; border-radius: 12px; padding: 10px 16px; }
-.mobile body { padding-bottom: 70px; }
-.mobile * { -webkit-tap-highlight-color: rgba(0,0,0,0.05); }
-.mobile .card, .mobile .tile { background: linear-gradient(180deg,#fff,#fafafa); box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+/* === Two Save buttons: black, high-contrast === */
+#btnSaveTop, #btnSave {
+  background: linear-gradient(180deg,#111,#000) !important;
+  color:#fff !important;
+  border: 1px solid #000 !important;
+}
+#btnSaveTop:hover, #btnSave:hover { filter: brightness(1.08); }
+/* Hide any other Save UI (e.g., sticky mobile Save bar) */
+#saveBar { display: none !important; }
+
+
+/* Confetti overlay + ring pulse */
+#confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:9999}
+.confetti{position:absolute;width:8px;height:12px;opacity:.95;will-change:transform,opacity;border-radius:2px}
+@keyframes confFall{0%{transform:translate3d(var(--x),-20px,0) rotate(0deg)}100%{transform:translate3d(var(--x2),110vh,0) rotate(720deg);opacity:0}}
+@keyframes ringPulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+.ring.pulse{animation:ringPulse .7s ease}
 
 </style>
 </head>
@@ -170,13 +152,13 @@
       <div class="sectionTitle">Safety (CGM)</div>
       <div class="controls" id="safety"></div>
       <div class="actions">
-        <button class="btn" id="btnSave">Save today</button>
+        <button class="btn" id="btnSave">Save Today</button>
         <button class="btn secondary" id="btnClear">Clear</button>
         <div class="mini" id="todayDate"></div>
       </div>
 
       <div class="tile calendar">
-        <h4>Calendar — This & Next</h4>
+        <h4>Calendar — Past Month & Current</h4>
         <div id="calendarWrap" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;width:100%">
           <div>
             <div id="calMonth1" class="tag"></div>
@@ -301,7 +283,7 @@ const QUESTIONS = [
   {id:"q9", label:"≥ 30 min activity/WT", weight:6, show:true},
   {id:"q10", label:"Looked great today?", weight:6, show:true},
   {id:"q11", label:"No foam in urine", weight:6, show:true},
-  {id:"q12", label:"Meditation/Red Light therapy", weight:4, show:true},
+  {id:"q12", label:"30 min health tweaking brainstorm?", weight:4, show:true},
   {id:"q13", label:"Mindset/Affirmation/Reframing", weight:4, show:true},
   {id:"q14", label:"Decluttered space/computer", weight:3, show:true},
   {id:"q15", label:"Limited non-productive screen time", weight:3, show:true},
@@ -356,7 +338,7 @@ function compute(ans){let subtotal=0; QUESTIONS.forEach((q,i)=>{ if(ans['q_'+i]=
 
 // Safe visual updater (guards if updateViz isn't defined)
 function safeUpdateViz(){
-  if (typeof updateViz === 'function') { safeUpdateViz(); return; }
+  if (typeof updateViz === 'function') { updateViz(); return; }
   // Fallback: rebuild visuals from saved state for the selected day
   try{
     const k = (typeof selectedISO==='function') ? selectedISO() : (new Date().toISOString().slice(0,10));
@@ -437,7 +419,7 @@ function buildMonth(targetMonthOffset, monthLabelId, gridId){
     cont.append(cell);
   }
 }
-function buildCalendars(){ buildMonth(0,'calMonth1','calendar1'); buildMonth(1,'calMonth2','calendar2'); }
+function buildCalendars(){ buildMonth(-1,'calMonth1','calendar1'); buildMonth(0,'calMonth2','calendar2'); }
 
 function lastNDays(n){ const arr=[]; const d=new Date(); d.setHours(0,0,0,0); for(let i=n-1;i>=0;i--){ const t=new Date(d); t.setDate(t.getDate()-i); arr.push(t); } return arr; }
 function buildMiniHeatmap(){
@@ -624,64 +606,35 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 </script>
-
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{}));
-}
-</script>
-
-<script>
-  try{ if (window.matchMedia && window.matchMedia('(max-width: 480px)').matches) {
-    document.documentElement.classList.add('mobile');
-  }}catch(e){}
-</script>
-
-<div id="saveBar" class="mobileSaveBar" hidden>
-  <div class="sb-left"><strong id="sb-date"></strong></div>
-  <button id="sb-save">Save Today</button>
-  <div class="sb-right">Now: <span id="sb-now">0</span></div>
-</div>
+<div id="confetti"></div>
 
 <script>
 (function(){
-  if (!document.documentElement.classList.contains('mobile')) return;
-  const bar = document.getElementById('saveBar');
-  const saveBtn = document.getElementById('sb-save');
-  const sbNow = document.getElementById('sb-now');
-  const sbDate = document.getElementById('sb-date');
-  function refreshBar(){
+  window.fireConfetti = function(){
     try{
-      sbDate.textContent = (typeof selectedISO==='function') ? selectedISO() : new Date().toISOString().slice(0,10);
-      const ans = (typeof collect==='function') ? collect() : {};
-      const s = (typeof compute==='function') ? compute(ans) : {final:0};
-      sbNow.textContent = Math.round(s.final||0);
+      const cont = document.getElementById('confetti'); if(!cont) return;
+      const colors = ['#10b981','#34d399','#60a5fa','#93c5fd','#a7f3d0','#f59e0b','#ef4444','#8b5cf6'];
+      const N = 120, w = window.innerWidth;
+      for(let i=0;i<N;i++){
+        const d = document.createElement('div'); d.className='confetti';
+        const x = Math.random()*w, drift = x + (Math.random()*120 - 60);
+        d.style.setProperty('--x', x+'px'); d.style.setProperty('--x2', drift+'px');
+        d.style.left = x+'px'; d.style.top = '-12px';
+        d.style.background = colors[(Math.random()*colors.length)|0];
+        d.style.animation = `confFall ${0.9 + Math.random()*0.9}s ease-out forwards`;
+        cont.appendChild(d); setTimeout(()=>{d.remove();},1800);
+      }
+      const ring = document.querySelector('.ring'); if(ring){ ring.classList.remove('pulse'); void ring.offsetWidth; ring.classList.add('pulse'); }
     }catch(e){}
-  }
-  if (saveBtn) saveBtn.onclick = function(){ if (typeof saveDay==='function') saveDay(); refreshBar(); };
-  document.addEventListener('answers-changed', refreshBar);
-  window.addEventListener('load', ()=>{ if(bar) bar.hidden=false; refreshBar(); });
-
-  try{
-    const btn = document.getElementById('btnExport');
-    if(btn){
-      btn.onclick = async function(){
-        const data = (typeof buildCSV==='function') ? buildCSV() : '';
-        const blob = new Blob([data], {type:'text/csv'});
-        if (navigator.share && navigator.canShare) {
-          try {
-            const file = new File([blob], 'QuantifiedMe.csv', {type:'text/csv'});
-            if (navigator.canShare({ files: [file] })) {
-              await navigator.share({ files: [file], title: 'Quantified Me', text: 'CSV export' });
-              return;
-            }
-          } catch(_){}
-        }
-        const url = URL.createObjectURL(blob);
-        const a=document.createElement('a'); a.href=url; a.download='QuantifiedMe.csv'; a.click(); URL.revokeObjectURL(url);
-      };
-    }
-  }catch(_){}
+  };
+  // Wrap saveDay to guarantee feedback
+  const orig = window.saveDay;
+  window.saveDay = function(){
+    try{ if (typeof orig === 'function') orig(); } finally { try{ window.fireConfetti(); }catch(_){ } }
+  };
+  // Patch button handlers directly as fallback
+  const t = document.getElementById('btnSaveTop'); if (t) t.addEventListener('click', ()=>fireConfetti(), {passive:true});
+  const b = document.getElementById('btnSave'); if (b) b.addEventListener('click', ()=>fireConfetti(), {passive:true});
 })();
 </script>
 
